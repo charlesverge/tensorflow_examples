@@ -23,6 +23,7 @@ import sys
 import numpy as np
 import pandas
 import tensorflow as tf
+import os
 
 FLAGS = None
 
@@ -100,6 +101,17 @@ def cnn_model(features, labels, mode):
   return tf.estimator.EstimatorSpec(
       mode=mode, loss=loss, eval_metric_ops=eval_metric_ops)
 
+# The serving_input_receiver defines the inputs for the model that tensor server accepts
+def serving_input_receiver_fn():
+  # Model accepts an array of sentences to classify.
+  # {"inputs":{"words":[[1,2,3,4,5,6...100],[1,2,3,4,5,6...100]]}}
+
+  # This is the example of what the input is expected, array of arrays of integers.
+  # With the name of words, see predict.py
+  serialized_tf_example = tf.placeholder(dtype=tf.int64,
+    shape=[1, MAX_DOCUMENT_LENGTH], name='input_tensors')
+  receiver_tensors      = { 'words': serialized_tf_example }
+  return tf.estimator.export.ServingInputReceiver(receiver_tensors, receiver_tensors)
 
 def main(unused_argv):
   global n_words
@@ -119,8 +131,8 @@ def main(unused_argv):
   n_words = len(vocab_processor.vocabulary_)
   print('Total words: %d' % n_words)
 
-  # Build model
-  classifier = tf.estimator.Estimator(model_fn=cnn_model)
+  # Build model, model_dir will save a checkpoint in the saved_model directory, this can be used to restore the model
+  classifier = tf.estimator.Estimator(model_fn=cnn_model, model_dir='saved_model')
 
   # Train.
   train_input_fn = tf.estimator.inputs.numpy_input_fn(
@@ -141,6 +153,14 @@ def main(unused_argv):
   scores = classifier.evaluate(input_fn=test_input_fn)
   print('Accuracy: {0:f}'.format(scores['accuracy']))
 
+  # The export_saved_model method creates a saved_model.pb and variables directory
+  # be used in a tensor server
+  classifier.export_savedmodel(
+      'saved_model_pb',
+      serving_input_receiver_fn=serving_input_receiver_fn)
+
+  # Save vocabulary for predict.py
+  vocab_processor.save(os.path.join('saved_model', 'vocab'))
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()

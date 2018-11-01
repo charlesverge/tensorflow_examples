@@ -4,9 +4,13 @@ This is an example of creating a saved_model.pb for use in  tensorflow server. I
 
 ## Files
 text_classification_cnn.py - An example of using a Tensorflow estimator and saved_model to create a saved_model.pb for use with Tensorflow server.
+
 predict.py - Run predictions on a Tensorflow server with a rest api request
+
 predict.sh - Run predictions with a curl request
+
 startupserver.sh - Start tensorflow server
+
 export_vocabulary.py - Export vocabulary to csv file
 
 ### Requirements
